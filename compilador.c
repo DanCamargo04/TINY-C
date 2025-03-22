@@ -182,46 +182,60 @@ TInfoAtomo obter_atomo(){
     switch (*entrada) {
         case '\0':
             info_atomo.atomo = ENDOFSTRING;
+            entrada++;
             break;
         case '{':
             info_atomo.atomo = ABRE_CHAVES;
+            entrada++;
             break;
         case '}':
             info_atomo.atomo = FECHA_CHAVES;
+            entrada++;
             break;
         case '(':
             info_atomo.atomo = ABRE_PAR;
+            entrada++;
             break;
         case ')':
             info_atomo.atomo = FECHA_PAR;
+            entrada++;
             break;
         case '"':
         case '\'':
             info_atomo.atomo = ASPAS;
+            entrada++;
             break;
         case ';':
             info_atomo.atomo = PONTO_VIRGULA;
+            entrada++;
             break;
         case ',':
             info_atomo.atomo = VIRGULA;
+            entrada++;
             break;
         case '=':
             info_atomo.atomo = IGUAL;
+            entrada++;
             break;
         case '>':
             info_atomo.atomo = MAIOR;
+            entrada++;
             break;
         case '<':
             info_atomo.atomo = MENOR;
+            entrada++;
             break;
         case '!':
             info_atomo.atomo = EXCLAMACAO;
+            entrada++;
             break;
         case '&':
             info_atomo.atomo = ECOMERCIAL;
+            entrada++;
             break;
         case '|':
             info_atomo.atomo = PIPE;
+            entrada++;           
             break;
         default:
             if(isdigit(*entrada)){
@@ -301,7 +315,7 @@ TInfoAtomo reconhece_char(){
     TInfoAtomo info_char;
     info_char.atomo = ERRO;
 
-    if(isalpha(*entrada) || isdigit(*entrada) || *entrada == "_"){
+    if(isalpha(*entrada) || isdigit(*entrada) || *entrada == '_'){
         entrada++;
         info_char.atomo = CHAR;
     }
