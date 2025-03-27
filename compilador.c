@@ -56,6 +56,7 @@ typedef struct{
     TAtomo atomo;
     int linha;
     char identificador[15];
+    char atributo[15];
 }TInfoAtomo;
 
 // declaracao de variaveis globais
@@ -96,7 +97,7 @@ char *strAtomo[] = {
 
 int contaLinha = 1;
 
-// declaracao da funcao
+// declaracao das funcoes
 
 TInfoAtomo obter_atomo();
 TInfoAtomo reconhece_id();
@@ -200,11 +201,6 @@ TInfoAtomo obter_atomo(){
             info_atomo.atomo = FECHA_PAR;
             entrada++;
             break;
-        case '"':
-        case '\'':
-            info_atomo.atomo = ASPAS;
-            entrada++;
-            break;
         case ';':
             info_atomo.atomo = PONTO_VIRGULA;
             entrada++;
@@ -240,14 +236,20 @@ TInfoAtomo obter_atomo(){
         default:
             if(isdigit(*entrada)){
                 info_atomo = reconhece_int();
+            }
+            else if(*entrada == '\''){
+                entrada++;
+                info_atomo = reconhece_char();
             } 
             else if(isalpha(*entrada) || *entrada == '_'){
                 info_atomo = reconhece_id();
             }
             else if(*entrada == '/' && *(entrada + 1) == '/'){
+                entrada+=2;
                 info_atomo = reconhece_comentario_simples();
             }
             else if(*entrada == '/' && *(entrada + 1) == '*'){
+                entrada+=2;
                 info_atomo = reconhece_comentario_composto();
             }
             break;
@@ -258,73 +260,118 @@ TInfoAtomo obter_atomo(){
     return info_atomo;
 }
 
-// IDENTIFICADOR -> (LETRA_MINUSCULA | LETRA_MAIUSCULA | _)+(LETRA_MINUSCULA | LETRA_MAIUSCULA | _ | DIGITO)*
+// IDENTIFICADOR -> (LETRA_MINUSCULA | LETRA_MAIUSCULA | _)+(LETRA_MINUSCULA | LETRA_MAIUSCULA | _ | DIGITO)* ||| Inserir o atributo
+// PALAVRAS RESERVADAS: char, else, if, int, main, readint, void, while, writeint
 TInfoAtomo reconhece_id(){
     TInfoAtomo info_id;
     char *ini_id = entrada;
-    int count = 1;
+    int count = 0;
     info_id.atomo = ERRO;
 
     if(isalpha(*entrada) || *entrada == '_') {
-        entrada ++;// consome letra maiuscula, minuscula ou _
+        entrada++;
         goto q1;
     }
     return info_id;
+
 q1:
-    if (count > 15) { // Excedeu 15 caracteres
+    if (count > 14) { 
         return info_id;
     }
-    if(isalpha(*entrada) || *entrada == '_' || isdigit(*entrada)){
+
+    if(isalnum(*entrada) || *entrada == '_') {
         count++;
-        entrada ++;// consome letra maiuscula, minuscula ou _
+        entrada++;
         goto q1;
     }
-    
-    info_id.atomo = ID;
 
     strncpy(info_id.identificador, ini_id, entrada - ini_id);
     info_id.identificador[entrada - ini_id] = '\0';
 
+    // Verifica se há palavras reservadas
+    if (strcmp(info_id.identificador, "int") == 0)
+        info_id.atomo = INT;
+    else if (strcmp(info_id.identificador, "char") == 0)
+        info_id.atomo = CHAR;
+    else if (strcmp(info_id.identificador, "if") == 0)
+        info_id.atomo = IF;
+    else if (strcmp(info_id.identificador, "else") == 0)
+        info_id.atomo = ELSE;
+    else if (strcmp(info_id.identificador, "while") == 0)
+        info_id.atomo = WHILE;
+    else if (strcmp(info_id.identificador, "main") == 0)
+        info_id.atomo = MAIN;
+    else if (strcmp(info_id.identificador, "readint") == 0)
+        info_id.atomo = READINT;
+    else if (strcmp(info_id.identificador, "writeint") == 0)
+        info_id.atomo = WRITEINT;
+    else if (strcmp(info_id.identificador, "void") == 0)
+        info_id.atomo = VOID;
+    else
+        info_id.atomo = ID;
+
     return info_id;
 }
 
-// INT -> DIGITO+
+// INT -> DIGITO+ (HEXADECIMAL)
 TInfoAtomo reconhece_int(){
     TInfoAtomo info_int;
     info_int.atomo = ERRO;
+    memset(info_int.atributo, 0, sizeof(info_int.atributo));
 
-    if(isdigit(*entrada)){
-        entrada++;
-        goto q1;
+    char *inicio = entrada;
+
+    if (entrada[0] == '0' && (entrada[1] == 'x' || entrada[1] == 'X')) {
+        entrada += 2;
+        if (!isxdigit(*entrada)) {
+            return info_int; // precisa ter ao menos 1 caractere após 0x
+        }
+
+        while (isxdigit(*entrada)) {
+            entrada++;
+        }
+
+        int len = entrada - inicio;
+        if (len < sizeof(info_int.atributo)) {
+            strncpy(info_int.atributo, inicio, len);
+            info_int.atributo[len] = '\0';
+        } else {
+            return info_int; // valor hexadecimal muito grande
+        }
+
+        info_int.atomo = INTCONST;
+        return info_int;
     }
 
-    return info_int;
-
-q1:
-    if(isdigit(*entrada)){
-        entrada++;
-        goto q1;
-    }
-
-    info_int.atomo = INT;
     return info_int;
 }
 
 // CHAR
-TInfoAtomo reconhece_char(){
+TInfoAtomo reconhece_char(){ // ok
     TInfoAtomo info_char;
     info_char.atomo = ERRO;
 
-    if(isalpha(*entrada) || isdigit(*entrada) || *entrada == '_'){
-        entrada++;
-        info_char.atomo = CHAR;
+    info_char.atributo[0] = *entrada;
+    entrada++;
+        
+    if(*entrada != '\''){
+        return info_char;
     }
 
+    entrada++;
+
+    if(!isspace(*entrada)){ // verfica se há um espaço após o fechamento das aspas
+        return info_char;
+    }
+
+    entrada++;
+
+    info_char.atomo = CHAR;
     return info_char;
 }
 
 // COMENTARIO SIMPLES
-TInfoAtomo reconhece_comentario_simples(){
+TInfoAtomo reconhece_comentario_simples(){ // ok
     TInfoAtomo info_coment;
     info_coment.atomo = COMENTARIO;
 
@@ -336,7 +383,7 @@ TInfoAtomo reconhece_comentario_simples(){
 }
 
 // COMENTARIO COMPOSTO
-TInfoAtomo reconhece_comentario_composto(){
+TInfoAtomo reconhece_comentario_composto(){ // ok
     TInfoAtomo info_coment;
     info_coment.atomo = COMENTARIO;
 
@@ -350,6 +397,5 @@ TInfoAtomo reconhece_comentario_composto(){
 
     return info_coment;
 }
-
 
 // SINTATICO ---------------------------------------------------------------------------------------------------
