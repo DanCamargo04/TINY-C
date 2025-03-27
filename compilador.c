@@ -366,7 +366,7 @@ TInfoAtomo reconhece_char(){ // ok
 
     entrada++;
 
-    info_char.atomo = CHAR;
+    info_char.atomo = CHARCONST;
     return info_char;
 }
 
