@@ -6,7 +6,7 @@ gcc compilador.c -Wall -Og -g -o compilador
 https://diveintosystems.org/book/C3-C_debug/valgrind.html
 
 Rode o Valgrind com 
-valgrind --leak-check=yes ./miniLexico 
+valgrind --leak-check=yes ./compilador
 
 caso não esteja instalado use
 sudo apt update
@@ -24,7 +24,6 @@ typedef enum{
     ERROLEXICO,
     ERROSINTATICO,
     ENDOFFILE,
-    ENDOFSTRING,
     COMENTARIO,
     ID,
     INT,
@@ -50,6 +49,7 @@ typedef enum{
     MAIORIGUAL,
     MENOR,
     MENORIGUAL,
+    DIFERENTEDE,
     NOT,
     AND,
     OR // fim de buffer
@@ -70,7 +70,6 @@ char *strAtomo[] = {
     "ERROLEXICO",
     "ERROSINTATICO",
     "ENDOFFILE",
-    "ENDOFSTRING",
     "COMENTARIO",
     "ID",
     "INT",
@@ -96,6 +95,7 @@ char *strAtomo[] = {
     "MAIORIGUAL",
     "MENOR",
     "MENORIGUAL",
+    "DIFERENTEDE",
     "NOT",
     "AND",
     "OR" 
@@ -105,74 +105,69 @@ int contaLinha = 1;
 
 // declaracao das funcoes
 
+TInfoAtomo verifica_igual(); // = ou ==
+TInfoAtomo verifica_maior(); // > ou >=
+TInfoAtomo verifica_menor(); // < ou <=
+TInfoAtomo verifica_exclamacao(); // ! ou !=
+TInfoAtomo verifica_ecomercial(); // &&
+TInfoAtomo verifica_pipe(); // ||
+
 TInfoAtomo obter_atomo();
+
 TInfoAtomo reconhece_id();
 TInfoAtomo reconhece_int();
 TInfoAtomo reconhece_char();
 TInfoAtomo reconhece_comentario();
 
-int main(int argc, char *argv[]){
+void program();
+void compound_stmt();
+void var_decl();
+void type_specifier();
+void var_decl_list();
+void variable_id();
+void stmt();
+void assig_stmt();
+void cond_stmt();
+void while_stmt();
+void expr();
+void conjunction();
+void comparision();
+void relation();
+void sum();
+void term();
+void factor();
 
-    // verifica se o nome do arquivo foi passado como argumento
-    if (argc != 2) {
-        printf("%s\n", argv[0]);
-        return 1;
-    }
+int main() {
+    
+    entrada = "void main ( void ) { int num_1, num_2, maior; readint(num_1); readint(num_2); if ( num_1 >= num_2 ) maior = num_1; else maior = num_2; writeint(maior); // fim do código }";
 
-    FILE *arquivo;
+    TInfoAtomo info;
 
-    arquivo = fopen(argv[1], "r");
+    do {
+        info = obter_atomo();
 
-    if (arquivo == NULL) {
-        printf("ERROLEXICO na abertura do arquivo!\n");
-        return 1;
-    }
+        printf("Token: %-18s Linha: %-3d", strAtomo[info.atomo], info.linha);
 
-    // determina o tamanho do arquivo
-    fseek(arquivo, 0, SEEK_END);
-    long tamanho = ftell(arquivo);
-    fseek(arquivo, 0, SEEK_SET);
-        
-    // aloca memória para o conteúdo do arquivo
-    char *buffer = (char *)malloc(tamanho + 1);
-    if (buffer == NULL) {
-        printf("ERROLEXICO de alocação de memória!\n");
-        fclose(arquivo);
-        return 1;
-    }
-        
-    // lê o conteúdo de um arquivo e armazena os dados em um buffer
-    size_t lidos = fread(buffer, 1, tamanho, arquivo);
-    buffer[lidos] = '\0';  // Adiciona o terminador nulo
-    entrada = buffer;
-
-    fclose(arquivo);
-
-    TInfoAtomo info_atm;
-
-    do{
-        info_atm = obter_atomo();
-
-        // FUNCAO DO SINTATICO
-
-        printf("%03d# %s", info_atm.linha,strAtomo[info_atm.atomo]);
-        if(info_atm.atomo == ID){
-            printf(" | %s", info_atm.identificador);
+        if (info.identificador[0] != '\0') {
+            printf("ID: %-15s", info.identificador);
         }
+        if (info.atributo[0] != '\0') {
+            printf("Atributo: %-10s", info.atributo);
+        }
+
         printf("\n");
 
-    }while(info_atm.atomo != ERROLEXICO && info_atm.atomo != ENDOFFILE);
+    } while (info.atomo != ENDOFFILE);
 
-    free(buffer);
-
-    printf("Fim de analise lexica e sintatica!\n");
+    printf("\nFim da análise léxica.\n");
+    return 0;
 }
-
-// LEXICO ---------------------------------------------------------------------------------------------------
 
 // implementacao da funcao
 TInfoAtomo obter_atomo(){
+
     TInfoAtomo info_atomo;
+    memset(&info_atomo, 0, sizeof(TInfoAtomo)); // limpa todos os campos
     info_atomo.atomo = ERROLEXICO;
 
     // eliminar delimitadores
@@ -185,9 +180,10 @@ TInfoAtomo obter_atomo(){
         entrada++;
     }
 
+    // verifica cada caractere
     switch (*entrada) {
         case '\0':
-            info_atomo.atomo = ENDOFSTRING;
+            info_atomo.atomo = ENDOFFILE;
             entrada++;
             break;
         case '{':
@@ -214,9 +210,32 @@ TInfoAtomo obter_atomo(){
             info_atomo.atomo = VIRGULA;
             entrada++;
             break;
-        default:
+        case '=':
+            entrada++;
+            info_atomo = verifica_igual();
+            break;
+        case '>':
+            entrada++;
+            info_atomo = verifica_maior();
+            break;
+        case '<':
+            entrada++;
+            info_atomo = verifica_menor();
+            break;
+        case '!':
+            entrada++;
+            info_atomo = verifica_exclamacao();
+            break;
+        case '&':
+            entrada++;
+            info_atomo = verifica_ecomercial();
+            break;
+        case '|':
+            entrada++;    
+            info_atomo = verifica_pipe();
+            break;
 
-            // CRIAR AS FUNÇÕES PARA OPERADORES RELACIONAIS E LÓGICOS
+        default: // ID / INT / CHAR / COMENTARIO
 
             if(isdigit(*entrada)){ // q0
                 if(*entrada != '0'){
@@ -236,13 +255,123 @@ TInfoAtomo obter_atomo(){
                 entrada++;
                 info_atomo = reconhece_comentario();
             }
-            
+
             break;
     }    
     
     info_atomo.linha = contaLinha;
     
     return info_atomo;
+}
+
+TInfoAtomo verifica_igual(){
+
+    TInfoAtomo info_igual;
+    memset(&info_igual, 0, sizeof(TInfoAtomo)); // reseta
+    info_igual.atomo = IGUALATRIBUICAO;
+
+    if(*entrada == '='){
+        entrada++;
+        goto q1;
+    }
+
+    return info_igual;
+
+q1:
+
+    info_igual.atomo = IGUALCOMPARACAO;
+    return info_igual;
+
+}
+
+TInfoAtomo verifica_maior(){
+
+    TInfoAtomo info_maior;
+    memset(&info_maior, 0, sizeof(TInfoAtomo)); // reseta
+    info_maior.atomo = MAIOR;
+
+    if(*entrada == '='){
+        entrada++;
+        goto q1;
+    }
+
+    return info_maior;
+
+q1:
+
+    info_maior.atomo = MAIORIGUAL;
+    return info_maior;
+
+}
+
+TInfoAtomo verifica_menor(){
+
+    TInfoAtomo info_menor;
+    memset(&info_menor, 0, sizeof(TInfoAtomo)); // reseta
+    info_menor.atomo = MENOR;
+    
+    if(*entrada == '='){
+        entrada++;
+        goto q1;
+    }
+    
+    return info_menor;
+    
+q1:
+    
+    info_menor.atomo = MENORIGUAL;
+    return info_menor;
+    
+}
+
+TInfoAtomo verifica_exclamacao(){
+    
+    TInfoAtomo info_excl;
+    memset(&info_excl, 0, sizeof(TInfoAtomo)); // reseta
+    info_excl.atomo = NOT;
+    
+    if(*entrada == '='){
+        entrada++;
+        goto q1;
+    }
+    
+    return info_excl;
+    
+q1:
+    
+    info_excl.atomo = DIFERENTEDE;
+    return info_excl;
+    
+}
+
+TInfoAtomo verifica_ecomercial(){
+
+    TInfoAtomo info_ecom;
+    memset(&info_ecom, 0, sizeof(TInfoAtomo)); // reseta
+    info_ecom.atomo = ERROLEXICO;
+    
+    if(*entrada == '&'){
+        entrada++;
+        info_ecom.atomo = AND;
+    }
+    
+    return info_ecom;
+
+}
+
+TInfoAtomo verifica_pipe(){
+    
+    TInfoAtomo info_pipe;
+    memset(&info_pipe, 0, sizeof(TInfoAtomo)); // reseta
+    info_pipe.atomo = ERROLEXICO;
+    
+    if(*entrada == '|'){
+        entrada++;
+        info_pipe.atomo = OR;
+    }
+    
+    return info_pipe;
+
 }
 
 // IDENTIFICADOR -> (LETRA_MINUSCULA | LETRA_MAIUSCULA | _)+(LETRA_MINUSCULA | LETRA_MAIUSCULA | _ | DIGITO)* ||| Inserir o atributo
@@ -300,6 +429,10 @@ q1:
     else
         info_id.atomo = ID;
 
+    if (info_id.atomo != ID) {
+        strcpy(info_id.identificador, "");
+    }
+        
     return info_id;
 }
 
@@ -382,55 +515,75 @@ q2:
 }
 
 // COMENTARIO
-TInfoAtomo reconhece_comentario(){
-
+TInfoAtomo reconhece_comentario() {
     TInfoAtomo info_coment;
-    info_coment.atomo = ERROLEXICO;
+    memset(&info_coment, 0, sizeof(TInfoAtomo));
+    info_coment.atomo = COMENTARIO;
 
-    if(*entrada == '/'){
+    if (*entrada == '/') {
         entrada++;
-        goto q1;
+        goto q1; // comentário de linha
     }
-    else if(*entrada == '*'){
+    else if (*entrada == '*') {
         entrada++;
-        goto q2;
+        goto q2; // comentário de bloco
     }
-    else{
+    else {
+        info_coment.atomo = ERROLEXICO;
         return info_coment;
     }
 
-q1:
-    
-    if(*entrada != '\0' || *entrada != '\n'){
-        entrada++;
-        goto q1;
+q1: // comentário de linha
+
+    if (*entrada == '\0') {
+        goto q3;
     }
-    entrada++;
-    goto q3;
-
-q2:
-
-    if(*entrada == '*'){
-        entrada++;
-        goto q4;
-    }
-    entrada++;
-    goto q2;
-
-q3: // final
-
-    info_coment.atomo = COMENTARIO;
-    return info_coment;
-
-q4: 
-
-    if(*entrada == '/'){
+    if (*entrada == '\n') {
+        contaLinha++;
         entrada++;
         goto q3;
     }
     entrada++;
+    goto q1;
+
+q2: // corpo do comentário de bloco
+
+    if (*entrada == '\0') {
+        info_coment.atomo = ERROLEXICO; // bloco não fechado
+        goto q3;
+    }
+    if (*entrada == '*') {
+        entrada++;
+        goto q4;
+    }
+    if (*entrada == '\n') {
+        contaLinha++;
+    }
+    entrada++;
     goto q2;
 
+q3: // fim do comentário (qualquer tipo)
+
+    return info_coment;
+
+q4: // possível fim do comentário de bloco
+
+    if (*entrada == '/') {
+        entrada++;
+        goto q3;
+    }
+    else if (*entrada == '*') {
+        entrada++;
+        goto q4;
+    }
+    else {
+        if (*entrada == '\n') {
+            contaLinha++;
+        }
+        entrada++;
+        goto q2;
+    }
 }
+
 
 // SINTATICO ---------------------------------------------------------------------------------------------------

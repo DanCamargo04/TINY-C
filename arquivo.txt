@@ -1,14 +1,13 @@
-// Casos válidos
-char letra = 'a';
-char digito = '9';
-char simbolo = ';';
-char espaco = ' ';
-
-// Casos inválidos
-char vazio = '';
-char duplo = 'ab';
-char sem_fechar = 'x;
-char sem_abrir = y';
-char quebra = '
-';
-char so_aspas = '''';
+/*
+programa le dois numeros inteiros e encontra o maior
+*/
+void main ( void ) {
+    int num_1, num_2, maior;
+        readint(num_1);
+        readint(num_2);
+    if ( num_1 > num_2 )
+        maior = num_1;
+    else
+        maior = num_2;
+    writeint(maior); // imprime o maior valor
+}
