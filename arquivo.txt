@@ -1,1 +1,14 @@
-abacate 123
+// Casos válidos
+char letra = 'a';
+char digito = '9';
+char simbolo = ';';
+char espaco = ' ';
+
+// Casos inválidos
+char vazio = '';
+char duplo = 'ab';
+char sem_fechar = 'x;
+char sem_abrir = y';
+char quebra = '
+';
+char so_aspas = '''';

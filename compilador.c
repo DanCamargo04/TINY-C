@@ -21,7 +21,8 @@ sudo apt upgrade
 
 // definicoes dos atomos
 typedef enum{
-    ERRO,
+    ERROLEXICO,
+    ERROSINTATICO,
     ENDOFFILE,
     ENDOFSTRING,
     COMENTARIO,
@@ -34,7 +35,6 @@ typedef enum{
     FECHA_PAR,
     ABRE_CHAVES,
     FECHA_CHAVES,
-    ASPAS,
     IF,
     ELSE,
     WHILE,
@@ -44,12 +44,15 @@ typedef enum{
     VIRGULA,
     INTCONST,
     CHARCONST,
-    IGUAL,
+    IGUALATRIBUICAO,
+    IGUALCOMPARACAO,
     MAIOR,
+    MAIORIGUAL,
     MENOR,
-    EXCLAMACAO,
-    ECOMERCIAL,
-    PIPE // fim de buffer
+    MENORIGUAL,
+    NOT,
+    AND,
+    OR // fim de buffer
 }TAtomo;
 
 typedef struct{
@@ -64,7 +67,8 @@ typedef struct{
 char *entrada = NULL;
 
 char *strAtomo[] = {
-    "ERRO",
+    "ERROLEXICO",
+    "ERROSINTATICO",
     "ENDOFFILE",
     "ENDOFSTRING",
     "COMENTARIO",
@@ -77,7 +81,6 @@ char *strAtomo[] = {
     "FECHA_PAR",
     "ABRE_CHAVES",
     "FECHA_CHAVES",
-    "ASPAS",
     "IF",
     "ELSE",
     "WHILE",
@@ -87,12 +90,15 @@ char *strAtomo[] = {
     "VIRGULA",
     "INTCONST",
     "CHARCONST",
-    "IGUAL",
+    "IGUALATRIBUICAO",
+    "IGUALCOMPARACAO",
     "MAIOR",
+    "MAIORIGUAL",
     "MENOR",
-    "EXCLAMACAO",
-    "ECOMERCIAL",
-    "PIPE"
+    "MENORIGUAL",
+    "NOT",
+    "AND",
+    "OR" 
 };
 
 int contaLinha = 1;
@@ -103,8 +109,7 @@ TInfoAtomo obter_atomo();
 TInfoAtomo reconhece_id();
 TInfoAtomo reconhece_int();
 TInfoAtomo reconhece_char();
-TInfoAtomo reconhece_comentario_simples();
-TInfoAtomo reconhece_comentario_composto();
+TInfoAtomo reconhece_comentario();
 
 int main(int argc, char *argv[]){
 
@@ -119,7 +124,7 @@ int main(int argc, char *argv[]){
     arquivo = fopen(argv[1], "r");
 
     if (arquivo == NULL) {
-        printf("Erro na abertura do arquivo!\n");
+        printf("ERROLEXICO na abertura do arquivo!\n");
         return 1;
     }
 
@@ -131,7 +136,7 @@ int main(int argc, char *argv[]){
     // aloca memória para o conteúdo do arquivo
     char *buffer = (char *)malloc(tamanho + 1);
     if (buffer == NULL) {
-        printf("Erro de alocação de memória!\n");
+        printf("ERROLEXICO de alocação de memória!\n");
         fclose(arquivo);
         return 1;
     }
@@ -156,7 +161,7 @@ int main(int argc, char *argv[]){
         }
         printf("\n");
 
-    }while(info_atm.atomo != ERRO && info_atm.atomo != ENDOFFILE);
+    }while(info_atm.atomo != ERROLEXICO && info_atm.atomo != ENDOFFILE);
 
     free(buffer);
 
@@ -168,7 +173,7 @@ int main(int argc, char *argv[]){
 // implementacao da funcao
 TInfoAtomo obter_atomo(){
     TInfoAtomo info_atomo;
-    info_atomo.atomo = ERRO;
+    info_atomo.atomo = ERROLEXICO;
 
     // eliminar delimitadores
     while(*entrada == ' '|| 
@@ -209,49 +214,29 @@ TInfoAtomo obter_atomo(){
             info_atomo.atomo = VIRGULA;
             entrada++;
             break;
-        case '=':
-            info_atomo.atomo = IGUAL;
-            entrada++;
-            break;
-        case '>':
-            info_atomo.atomo = MAIOR;
-            entrada++;
-            break;
-        case '<':
-            info_atomo.atomo = MENOR;
-            entrada++;
-            break;
-        case '!':
-            info_atomo.atomo = EXCLAMACAO;
-            entrada++;
-            break;
-        case '&':
-            info_atomo.atomo = ECOMERCIAL;
-            entrada++;
-            break;
-        case '|':
-            info_atomo.atomo = PIPE;
-            entrada++;           
-            break;
         default:
-            if(isdigit(*entrada)){
+
+            // CRIAR AS FUNÇÕES PARA OPERADORES RELACIONAIS E LÓGICOS
+
+            if(isdigit(*entrada)){ // q0
+                if(*entrada != '0'){
+                    info_atomo.atomo = ERROLEXICO;
+                    break;
+                }
                 info_atomo = reconhece_int();
             }
-            else if(*entrada == '\''){
+            else if(*entrada == '\''){ // q0
                 entrada++;
                 info_atomo = reconhece_char();
             } 
-            else if(isalpha(*entrada) || *entrada == '_'){
+            else if(isalpha(*entrada) || *entrada == '_'){ // q0
                 info_atomo = reconhece_id();
             }
-            else if(*entrada == '/' && *(entrada + 1) == '/'){
-                entrada+=2;
-                info_atomo = reconhece_comentario_simples();
+            else if(*entrada == '/'){ // q0
+                entrada++;
+                info_atomo = reconhece_comentario();
             }
-            else if(*entrada == '/' && *(entrada + 1) == '*'){
-                entrada+=2;
-                info_atomo = reconhece_comentario_composto();
-            }
+            
             break;
     }    
     
@@ -262,33 +247,38 @@ TInfoAtomo obter_atomo(){
 
 // IDENTIFICADOR -> (LETRA_MINUSCULA | LETRA_MAIUSCULA | _)+(LETRA_MINUSCULA | LETRA_MAIUSCULA | _ | DIGITO)* ||| Inserir o atributo
 // PALAVRAS RESERVADAS: char, else, if, int, main, readint, void, while, writeint
-TInfoAtomo reconhece_id(){
+TInfoAtomo reconhece_id() {
+
     TInfoAtomo info_id;
     char *ini_id = entrada;
-    int count = 0;
-    info_id.atomo = ERRO;
+    int count = 1; // já vai consumir o primeiro caractere
+    info_id.atomo = ERROLEXICO;
 
-    if(isalpha(*entrada) || *entrada == '_') {
+    if (isalpha(*entrada) || *entrada == '_') {
         entrada++;
         goto q1;
     }
+
     return info_id;
 
 q1:
-    if (count > 14) { 
-        return info_id;
-    }
 
-    if(isalnum(*entrada) || *entrada == '_') {
-        count++;
-        entrada++;
-        goto q1;
+    if (isalpha(*entrada) || isdigit(*entrada) || *entrada == '_') {
+        if (count < 14) {
+            count++;
+            entrada++;
+            goto q1;
+        } else {
+            entrada++; // consome o último, mas ignora se ultrapassar
+            goto q1;
+        }
     }
 
     strncpy(info_id.identificador, ini_id, entrada - ini_id);
     info_id.identificador[entrada - ini_id] = '\0';
 
-    // Verifica se há palavras reservadas
+    // Verifica se é palavra reservada
+
     if (strcmp(info_id.identificador, "int") == 0)
         info_id.atomo = INT;
     else if (strcmp(info_id.identificador, "char") == 0)
@@ -314,88 +304,133 @@ q1:
 }
 
 // INT -> DIGITO+ (HEXADECIMAL)
-TInfoAtomo reconhece_int(){
+TInfoAtomo reconhece_int() {
+
     TInfoAtomo info_int;
-    info_int.atomo = ERRO;
-    memset(info_int.atributo, 0, sizeof(info_int.atributo));
+    info_int.atomo = ERROLEXICO;
 
-    char *inicio = entrada;
+    char buffer[15]; // para guardar os dígitos hexadecimais
+    int idx = 0;
 
-    if (entrada[0] == '0' && (entrada[1] == 'x' || entrada[1] == 'X')) {
-        entrada += 2;
-        if (!isxdigit(*entrada)) {
-            return info_int; // precisa ter ao menos 1 caractere após 0x
-        }
+    if (*entrada == '0') {
+        entrada++;
+        goto q1;
+    }
 
-        while (isxdigit(*entrada)) {
-            entrada++;
-        }
+    return info_int;
 
-        int len = entrada - inicio;
-        if (len < sizeof(info_int.atributo)) {
-            strncpy(info_int.atributo, inicio, len);
-            info_int.atributo[len] = '\0';
-        } else {
-            return info_int; // valor hexadecimal muito grande
-        }
+q1:
+    if (*entrada == 'x' || *entrada == 'X') {
+        entrada++;
+        goto q2;
+    }
 
+    return info_int;
+
+q2:
+    if (isxdigit(*entrada)) {
+        buffer[idx++] = *entrada;
+        entrada++;
+        goto q3;
+    }
+
+    return info_int;
+
+q3:
+    if (isxdigit(*entrada)) {
+        if (idx < 14) buffer[idx++] = *entrada;
+        entrada++;
+        goto q3;
+    }
+
+    buffer[idx] = '\0'; // finaliza a string com '\0'
+    goto q4;
+
+q4: // final
+
+    if (isspace(*entrada) || *entrada == '\0' || *entrada == ';' || *entrada == ')' || *entrada == ',') {
+        long valor = strtol(buffer, NULL, 16); // converte hexadecimal para inteiro
+        sprintf(info_int.atributo, "%ld", valor); // salva como string em atributo
         info_int.atomo = INTCONST;
-        return info_int;
     }
 
     return info_int;
 }
 
 // CHAR
-TInfoAtomo reconhece_char(){ // ok
+TInfoAtomo reconhece_char(){ 
+
     TInfoAtomo info_char;
-    info_char.atomo = ERRO;
+    info_char.atomo = ERROLEXICO;
 
     info_char.atributo[0] = *entrada;
-    entrada++;
+    entrada++; // q1
         
     if(*entrada != '\''){
-        return info_char;
+        entrada++;
+        goto q2;
     }
 
-    entrada++;
+q2:
 
-    if(!isspace(*entrada)){ // verfica se há um espaço após o fechamento das aspas
-        return info_char;
+    if(isspace(*entrada) || *entrada == '\0' || *entrada == ';' || *entrada == ')' || *entrada == ','){ // verfica se há um espaço após o fechamento das aspas
+        entrada++;
+        info_char.atomo = CHARCONST;
     }
 
-    entrada++;
-
-    info_char.atomo = CHARCONST;
     return info_char;
 }
 
-// COMENTARIO SIMPLES
-TInfoAtomo reconhece_comentario_simples(){ // ok
+// COMENTARIO
+TInfoAtomo reconhece_comentario(){
+
     TInfoAtomo info_coment;
-    info_coment.atomo = COMENTARIO;
+    info_coment.atomo = ERROLEXICO;
 
-    while (*entrada != '\n' && *entrada != '\0') {
-        entrada++; 
-    }
-
-    return info_coment;
-}
-
-// COMENTARIO COMPOSTO
-TInfoAtomo reconhece_comentario_composto(){ // ok
-    TInfoAtomo info_coment;
-    info_coment.atomo = COMENTARIO;
-
-    entrada++;
-    while (*entrada != '\0' && !(*entrada == '*' && *(entrada + 1) == '/')) {
-        if (*entrada == '\n') contaLinha++; 
+    if(*entrada == '/'){
         entrada++;
+        goto q1;
+    }
+    else if(*entrada == '*'){
+        entrada++;
+        goto q2;
+    }
+    else{
+        return info_coment;
     }
 
-    if (*entrada == '*') entrada += 2;
+q1:
+    
+    if(*entrada != '\0' || *entrada != '\n'){
+        entrada++;
+        goto q1;
+    }
+    entrada++;
+    goto q3;
 
+q2:
+
+    if(*entrada == '*'){
+        entrada++;
+        goto q4;
+    }
+    entrada++;
+    goto q2;
+
+q3: // final
+
+    info_coment.atomo = COMENTARIO;
     return info_coment;
+
+q4: 
+
+    if(*entrada == '/'){
+        entrada++;
+        goto q3;
+    }
+    entrada++;
+    goto q2;
+
 }
 
 // SINTATICO ---------------------------------------------------------------------------------------------------
