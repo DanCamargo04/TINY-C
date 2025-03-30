@@ -26,6 +26,10 @@ typedef enum{
     ENDOFFILE,
     COMENTARIO,
     ID,
+    ADD,
+    SUB,
+    DIVI,
+    MULTI,
     INT,
     CHAR,
     VOID,
@@ -74,6 +78,10 @@ char *strAtomo[] = {
     "ENDOFFILE",
     "COMENTARIO",
     "ID",
+    "ADD",
+    "SUB",
+    "DIVI",
+    "MULTI",
     "INT",
     "CHAR",
     "VOID",
@@ -117,7 +125,7 @@ TInfoAtomo obter_atomo();
 TInfoAtomo reconhece_id();
 TInfoAtomo reconhece_int();
 TInfoAtomo reconhece_char();
-TInfoAtomo reconhece_comentario();
+TInfoAtomo reconhece_comentario_ou_divisao();
 
 void program();
 void compound_stmt();
@@ -138,30 +146,21 @@ void term();
 void factor();
 
 int main() {
-    
-    entrada = "void main ( void ) { int num_1, num_2, maior; readint(num_1); readint(num_2); if ( num_1 >= num_2 ) maior = num_1; else maior = num_2; writeint(maior); // fim do código }";
 
-    TInfoAtomo info_atomo;
+    entrada = "void main ( void ) {int num_1, num_2, maior; readint(num_1); readint(num_2); if ( num_1 > num_2 ) maior = num_1; else maior = num_2; writeint(maior); // imprime o maior valor}";
 
-    do {
+    TInfoAtomo info_atomo = obter_atomo(); // primeira leitura
+    lookahead = info_atomo.atomo;
 
-        info_atomo = obter_atomo();
-        lookahead = info_atomo.atomo; // próximo atomo
+    program(); // inicia o sintático
 
-        printf("Token: %-18s Linha: %-3d", strAtomo[info_atomo.atomo], info_atomo.linha);
+    if (lookahead != ENDOFFILE) {
+        printf("Erro: tokens restantes após o fim do programa\n");
+    } 
+    else {
+        printf("\nCódigo léxica e sintaticamente correto!\n\n");
+    }
 
-        if (info_atomo.identificador[0] != '\0') {
-            printf("ID: %-15s", info_atomo.identificador);
-        }
-        if (info_atomo.atributo[0] != '\0') {
-            printf("Atributo: %-10s", info_atomo.atributo);
-        }
-
-        printf("\n");
-
-    } while (info_atomo.atomo != ENDOFFILE);
-
-    printf("\nCódigo léxicamente e sintaticamente correto!\n\n");
     return 0;
 }
 
@@ -169,17 +168,29 @@ int main() {
 TInfoAtomo obter_atomo(){
 
     TInfoAtomo info_atomo;
-    memset(&info_atomo, 0, sizeof(TInfoAtomo)); // limpa todos os campos
-    info_atomo.atomo = ERROLEXICO;
+    memset(&info_atomo, 0, sizeof(TInfoAtomo)); // limpa
 
-    // eliminar delimitadores
-    while(*entrada == ' '|| 
-          *entrada == '\n'||
-          *entrada == '\r'||
-          *entrada == '\t'){
-        if(*entrada == '\n')
-            contaLinha++;
+    // eliminar espaços
+    while (*entrada == ' ' || *entrada == '\n' || *entrada == '\r' || *entrada == '\t') {
+        if (*entrada == '\n') contaLinha++;
         entrada++;
+    }
+
+    // fim de arquivo
+    if (*entrada == '\0') {
+        info_atomo.atomo = ENDOFFILE;
+        return info_atomo;
+    }
+
+    if (*entrada == '/') {
+        char *inicio = entrada;
+        entrada++;
+        if (*entrada == '/' || *entrada == '*') {
+            entrada = inicio;
+            return reconhece_comentario_ou_divisao(); // retorna COMENTARIO
+        } else {
+            entrada = inicio;
+        }
     }
 
     // verifica cada caractere
@@ -236,6 +247,18 @@ TInfoAtomo obter_atomo(){
             entrada++;    
             info_atomo = verifica_pipe();
             break;
+        case '+':
+            entrada++;    
+            info_atomo.atomo = ADD;
+            break;
+        case '-':
+            entrada++;    
+            info_atomo.atomo = SUB;
+            break;
+        case '*':
+            entrada++;    
+            info_atomo.atomo = MULTI;
+            break;
 
         default: // ID / INT / CHAR / COMENTARIO
 
@@ -255,7 +278,7 @@ TInfoAtomo obter_atomo(){
             }
             else if(*entrada == '/'){ // q0
                 entrada++;
-                info_atomo = reconhece_comentario();
+                info_atomo = reconhece_comentario_ou_divisao();
             }
 
             break;
@@ -516,107 +539,145 @@ q2:
     return info_char;
 }
 
-// COMENTARIO
-TInfoAtomo reconhece_comentario() {
-
+// COMENTARIO OU DIVISAO
+TInfoAtomo reconhece_comentario_ou_divisao() {
     TInfoAtomo info_coment;
     memset(&info_coment, 0, sizeof(TInfoAtomo));
-    info_coment.atomo = COMENTARIO;
+    info_coment.atomo = ERROLEXICO;
 
     if (*entrada == '/') {
         entrada++;
-        goto q1; // comentário de linha
+        if (*entrada == '/') {
+            entrada++;
+            while (*entrada != '\0' && *entrada != '\n') {
+                entrada++;
+            }
+            info_coment.atomo = COMENTARIO;
+            return info_coment;
+        } else if (*entrada == '*') {
+            entrada++;
+            while (*entrada != '\0') {
+                if (*entrada == '*' && *(entrada + 1) == '/') {
+                    entrada += 2;
+                    info_coment.atomo = COMENTARIO;
+                    return info_coment;
+                }
+                if (*entrada == '\n') contaLinha++;
+                entrada++;
+            }
+            info_coment.atomo = ERROLEXICO; // não fechou
+            return info_coment;
+        } else {
+            info_coment.atomo = DIVI;
+            return info_coment;
+        }
     }
-    else if (*entrada == '*') {
-        entrada++;
-        goto q2; // comentário de bloco
-    }
-    else {
-        info_coment.atomo = ERROLEXICO;
-        return info_coment;
-    }
-
-q1: // comentário de linha
-
-    if (*entrada == '\0') {
-        goto q3;
-    }
-    if (*entrada == '\n') {
-        contaLinha++;
-        entrada++;
-        goto q3;
-    }
-    entrada++;
-    goto q1;
-
-q2: // comentário de bloco
-
-    if (*entrada == '\0') {
-        info_coment.atomo = ERROLEXICO; // bloco não fechado
-        goto q3;
-    }
-    if (*entrada == '*') {
-        entrada++;
-        goto q4;
-    }
-    if (*entrada == '\n') {
-        contaLinha++;
-    }
-    entrada++;
-    goto q2;
-
-q3: // fim do comentário (qualquer tipo)
 
     return info_coment;
-
-q4:
-
-    if (*entrada == '/') {
-        entrada++;
-        goto q3;
-    }
-    else if (*entrada == '*') {
-        entrada++;
-        goto q4;
-    }
-    else {
-        if (*entrada == '\n') {
-            contaLinha++;
-        }
-        entrada++;
-        goto q2;
-    }
 }
 
+
 // SINTATICO ---------------------------------------------------------------------------------------------------
+
+void consome(TAtomo atomo) {
+    if (lookahead == atomo) {
+        if (lookahead >= 0 && lookahead <= OR) {
+            printf("Atomo: %s\n", strAtomo[lookahead]);
+        } else {
+            printf("Atomom: [Atomo inválido: %d]\n", lookahead);
+        }
+        TInfoAtomo info_atomo = obter_atomo();
+        lookahead = info_atomo.atomo;
+    } else {
+        const char *esperado = (atomo >= 0 && atomo <= OR) ? strAtomo[atomo] : "DESCONHECIDO";
+        const char *encontrado = (lookahead >= 0 && lookahead <= OR) ? strAtomo[lookahead] : "DESCONHECIDO";
+
+        printf("\nErro sintatico na linha %d: esperado [%s] encontrado [%s]\n", contaLinha, esperado, encontrado);
+        exit(1);
+    }
+}
 
 // <program> ::= void main ‘(‘ void ‘)’ <compound_stmt>
 void program(){
 
+    consome(VOID);
+    consome(MAIN);
+    consome(ABRE_PAR);
+    consome(VOID);
+    consome(FECHA_PAR);
+    compound_stmt();
+
 }
 
-// <compound_stmt> ::= ‘{‘ <var_decl> { <stmt> } ‘}’
-void compound_stmt(){
+// <compound_stmt> ::= '{' <var_decl> { <stmt> } '}'
+void compound_stmt() {
+    consome(ABRE_CHAVES);
+    var_decl();
 
+    while (lookahead == COMENTARIO) consome(COMENTARIO); // <-- aqui
+
+    while (lookahead == ID || lookahead == IF || lookahead == WHILE ||
+           lookahead == READINT || lookahead == WRITEINT || lookahead == ABRE_CHAVES || lookahead == COMENTARIO) {
+
+        while (lookahead == COMENTARIO) consome(COMENTARIO); // <-- aqui
+
+        stmt();
+    }
+
+    while (lookahead == COMENTARIO) consome(COMENTARIO); // <-- e aqui também
+
+    consome(FECHA_CHAVES);
 }
+
 
 // <var_decl> ::= [ <type_specifier> <var_decl_list> ‘;’ ]
 void var_decl(){
 
+    if(lookahead == INT || lookahead == CHAR){
+        type_specifier();
+        var_decl_list();
+        consome(PONTO_VIRGULA);
+    }
+
 }
 
 // <type_specifier> ::= int | char
-void type_specifier(){
+void type_specifier() {
 
+    switch (lookahead) {
+        case INT:
+            consome(INT);
+            break;
+        case CHAR:
+            consome(CHAR);
+            break;
+        default:
+            printf("\nErro sintático na linha %d: esperado tipo INT ou CHAR, encontrado [%s]\n", contaLinha, strAtomo[lookahead]);
+            exit(1);
+    }
 }
 
-// <var_decl_list> ::= <variable_id> { ‘,’ <variable_id> }
-void var_decl_list(){
 
+// <var_decl_list> ::= <variable_id> { ',' <variable_id> }
+void var_decl_list() {
+
+    variable_id();
+    while (lookahead == VIRGULA) {
+        consome(VIRGULA);
+        variable_id();
+    }
+    
 }
 
 // <variable_id> ::= id [ ‘=’ <expr> ]
 void variable_id(){
+
+    consome(ID);
+    
+    if(lookahead == IGUALATRIBUICAO){
+        consome(IGUALATRIBUICAO);
+        expr();
+    }
 
 }
 
@@ -628,56 +689,185 @@ void variable_id(){
         readint ‘(‘ id ‘)’ ‘;’ |
         writeint ‘(‘ <expr> ‘)’ ‘;’ 
 */
-void stmt(){
+void stmt() {
 
+    switch (lookahead) {
+        case ABRE_CHAVES:
+            compound_stmt(); 
+            break;
+        case ID:
+            assig_stmt(); 
+            break;
+        case IF:
+            cond_stmt(); 
+            break;
+        case WHILE:
+            while_stmt();
+            break;
+        case READINT:
+            consome(READINT);
+            consome(ABRE_PAR);
+            consome(ID);
+            consome(FECHA_PAR);
+            consome(PONTO_VIRGULA);
+            break;
+        case WRITEINT:
+            consome(WRITEINT);
+            consome(ABRE_PAR);
+            expr();
+            consome(FECHA_PAR);
+            consome(PONTO_VIRGULA);
+            break;
+        default:
+            printf("Erro sintático: início de comando inválido na linha %d\n", contaLinha);
+            exit(1);
+    }
 }
 
 // <assig_stmt> ::= id ‘=’ <expr> ‘;’ 
 void assig_stmt(){
+    
+    consome(ID);
+    consome(IGUALATRIBUICAO);
+    expr();
+    consome(PONTO_VIRGULA);
 
 }
 
 // <cond_stmt> ::= if ‘(‘ <expr> ‘)’ <stmt> [ else <stmt> ]
 void cond_stmt(){
 
+    consome(IF);
+    consome(ABRE_PAR);
+    expr();
+    consome(FECHA_PAR);
+    stmt();
+    
+    if(lookahead == ELSE){
+        consome(ELSE);
+        stmt();
+    }
+
 }
 
 // <while_stmt> ::= while ‘(‘ <expr> ‘)’ <stmt>
 void while_stmt(){
 
+    consome(WHILE);
+    consome(ABRE_PAR);
+    expr();
+    consome(FECHA_PAR);
+    stmt();
+
 }
 
-// <expr> ::= <conjunction> { ‘||’ <conjunction> }
-void expr(){
+// <expr> ::= <conjunction> { '||' <conjunction> }
+void expr() {
 
+    conjunction();
+    while (lookahead == OR) {
+        consome(OR);
+        conjunction();
+    }
 }
 
-// <conjunction> ::= <comparison> { ‘&&’ <comparison> }
-void conjunction(){
-
+// <conjunction> ::= <comparison> { '&&' <comparison> }
+void conjunction() {
+    
+    comparision();
+    while (lookahead == AND) {
+        consome(AND);
+        comparision();
+    }
 }
 
 // <comparison> ::= <sum> [ <relation> <sum> ]
 void comparision(){
 
+    sum();
+
+    if(lookahead == MENOR || lookahead == MENORIGUAL || lookahead == IGUALCOMPARACAO || lookahead == DIFERENTEDE || lookahead == MAIOR || lookahead == MAIORIGUAL){
+        relation();
+        sum();
+    }
+
 }
 
 // <relation> ::= “<” | “<=” | “==” | “!=” | “>” | “>=”
-void relation(){
+void relation() {
 
+    switch (lookahead) {
+        case MENOR:
+            consome(MENOR);
+            break;
+        case MENORIGUAL:
+            consome(MENORIGUAL);
+            break;
+        case IGUALCOMPARACAO:
+            consome(IGUALCOMPARACAO);
+            break;
+        case DIFERENTEDE:
+            consome(DIFERENTEDE);
+            break;
+        case MAIOR:
+            consome(MAIOR);
+            break;
+        case MAIORIGUAL:
+            consome(MAIORIGUAL);
+            break;
+        default:
+            printf("\nErro sintático na linha %d: esperado operador relacional (<, <=, ==, !=, >, >=), encontrado [%s]\n", contaLinha, strAtomo[lookahead]);
+            exit(1);
+    }
 }
 
-// <sum> ::= <term> { (‘+’ | ‘-’) <term> }
-void sum(){
-
+// <sum> ::= <term> { ('+' | '-') <term> }
+void sum() {
+    term();
+    while (lookahead == ADD || lookahead == SUB) {
+        if (lookahead == ADD) {
+            consome(ADD);
+        } else {
+            consome(SUB);
+        }
+        term();
+    }
 }
 
-// <term> ::= <factor> { ( ‘*’ | ‘/’ ) <factor> }
-void term(){
-
+// <term> ::= <factor> { ('*' | '/') <factor> }
+void term() {
+    factor();
+    while (lookahead == MULTI || lookahead == DIVI) {
+        if (lookahead == MULTI) {
+            consome(MULTI);
+        } else {
+            consome(DIVI);
+        }
+        factor();
+    }
 }
 
 // <factor> ::= intconst | charconst | id | ‘(‘ <expr> ‘)’
-void factor(){
+void factor() {
 
+    switch (lookahead) {
+        case INTCONST:
+            consome(INTCONST);
+            break;
+        case CHARCONST:
+            consome(CHARCONST);
+            break;
+        case ID:
+            consome(ID);
+            break;
+        case ABRE_PAR:
+            consome(ABRE_PAR);
+            expr();
+            consome(FECHA_PAR);
+            break;
+        default:
+            printf("\nErro sintático na linha %d: esperado INTCONST, CHARCONST, ID ou '(' expr ')' — encontrado [%s]\n",
+                   contaLinha, strAtomo[lookahead]);
+            exit(1);
+    }
 }
