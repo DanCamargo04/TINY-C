@@ -161,7 +161,7 @@ int main() {
 
     } while (info_atomo.atomo != ENDOFFILE);
 
-    printf("\nCódigo léxicamente e sintaticamente correto!\n");
+    printf("\nCódigo léxicamente e sintaticamente correto!\n\n");
     return 0;
 }
 
@@ -588,10 +588,6 @@ q4:
     }
 }
 
-<<<<<<< HEAD
-// SINTATICO ---------------------------------------------------------------------------------------------------
-=======
-
 // SINTATICO ---------------------------------------------------------------------------------------------------
 
 // <program> ::= void main ‘(‘ void ‘)’ <compound_stmt>
@@ -685,4 +681,3 @@ void term(){
 void factor(){
 
 }
->>>>>>> b1af8cc (preparação para o analisador sintático)
