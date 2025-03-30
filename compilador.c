@@ -62,9 +62,11 @@ typedef struct{
     char atributo[15];
 }TInfoAtomo;
 
-// declaracao de variaveis globais
+// Declaracao de variaveis globais
 
 char *entrada = NULL;
+TAtomo lookahead;
+int contaLinha = 1;
 
 char *strAtomo[] = {
     "ERROLEXICO",
@@ -101,9 +103,7 @@ char *strAtomo[] = {
     "OR" 
 };
 
-int contaLinha = 1;
-
-// declaracao das funcoes
+// Declaracao das funcoes
 
 TInfoAtomo verifica_igual(); // = ou ==
 TInfoAtomo verifica_maior(); // > ou >=
@@ -141,25 +141,27 @@ int main() {
     
     entrada = "void main ( void ) { int num_1, num_2, maior; readint(num_1); readint(num_2); if ( num_1 >= num_2 ) maior = num_1; else maior = num_2; writeint(maior); // fim do código }";
 
-    TInfoAtomo info;
+    TInfoAtomo info_atomo;
 
     do {
-        info = obter_atomo();
 
-        printf("Token: %-18s Linha: %-3d", strAtomo[info.atomo], info.linha);
+        info_atomo = obter_atomo();
+        lookahead = info_atomo.atomo; // próximo atomo
 
-        if (info.identificador[0] != '\0') {
-            printf("ID: %-15s", info.identificador);
+        printf("Token: %-18s Linha: %-3d", strAtomo[info_atomo.atomo], info_atomo.linha);
+
+        if (info_atomo.identificador[0] != '\0') {
+            printf("ID: %-15s", info_atomo.identificador);
         }
-        if (info.atributo[0] != '\0') {
-            printf("Atributo: %-10s", info.atributo);
+        if (info_atomo.atributo[0] != '\0') {
+            printf("Atributo: %-10s", info_atomo.atributo);
         }
 
         printf("\n");
 
-    } while (info.atomo != ENDOFFILE);
+    } while (info_atomo.atomo != ENDOFFILE);
 
-    printf("\nFim da análise léxica.\n");
+    printf("\nCódigo léxicamente e sintaticamente correto!\n");
     return 0;
 }
 
@@ -380,7 +382,7 @@ TInfoAtomo reconhece_id() {
 
     TInfoAtomo info_id;
     char *ini_id = entrada;
-    int count = 1; // já vai consumir o primeiro caractere
+    int count = 1;
     info_id.atomo = ERROLEXICO;
 
     if (isalpha(*entrada) || *entrada == '_') {
@@ -398,7 +400,7 @@ q1:
             entrada++;
             goto q1;
         } else {
-            entrada++; // consome o último, mas ignora se ultrapassar
+            entrada++;
             goto q1;
         }
     }
@@ -516,6 +518,7 @@ q2:
 
 // COMENTARIO
 TInfoAtomo reconhece_comentario() {
+
     TInfoAtomo info_coment;
     memset(&info_coment, 0, sizeof(TInfoAtomo));
     info_coment.atomo = COMENTARIO;
@@ -546,7 +549,7 @@ q1: // comentário de linha
     entrada++;
     goto q1;
 
-q2: // corpo do comentário de bloco
+q2: // comentário de bloco
 
     if (*entrada == '\0') {
         info_coment.atomo = ERROLEXICO; // bloco não fechado
@@ -566,7 +569,7 @@ q3: // fim do comentário (qualquer tipo)
 
     return info_coment;
 
-q4: // possível fim do comentário de bloco
+q4:
 
     if (*entrada == '/') {
         entrada++;
@@ -585,4 +588,101 @@ q4: // possível fim do comentário de bloco
     }
 }
 
+<<<<<<< HEAD
 // SINTATICO ---------------------------------------------------------------------------------------------------
+=======
+
+// SINTATICO ---------------------------------------------------------------------------------------------------
+
+// <program> ::= void main ‘(‘ void ‘)’ <compound_stmt>
+void program(){
+
+}
+
+// <compound_stmt> ::= ‘{‘ <var_decl> { <stmt> } ‘}’
+void compound_stmt(){
+
+}
+
+// <var_decl> ::= [ <type_specifier> <var_decl_list> ‘;’ ]
+void var_decl(){
+
+}
+
+// <type_specifier> ::= int | char
+void type_specifier(){
+
+}
+
+// <var_decl_list> ::= <variable_id> { ‘,’ <variable_id> }
+void var_decl_list(){
+
+}
+
+// <variable_id> ::= id [ ‘=’ <expr> ]
+void variable_id(){
+
+}
+
+/*
+<stmt> ::= <compound_stmt> |
+        <assig_stmt> |
+        <cond_stmt> |
+        <while_stmt> |
+        readint ‘(‘ id ‘)’ ‘;’ |
+        writeint ‘(‘ <expr> ‘)’ ‘;’ 
+*/
+void stmt(){
+
+}
+
+// <assig_stmt> ::= id ‘=’ <expr> ‘;’ 
+void assig_stmt(){
+
+}
+
+// <cond_stmt> ::= if ‘(‘ <expr> ‘)’ <stmt> [ else <stmt> ]
+void cond_stmt(){
+
+}
+
+// <while_stmt> ::= while ‘(‘ <expr> ‘)’ <stmt>
+void while_stmt(){
+
+}
+
+// <expr> ::= <conjunction> { ‘||’ <conjunction> }
+void expr(){
+
+}
+
+// <conjunction> ::= <comparison> { ‘&&’ <comparison> }
+void conjunction(){
+
+}
+
+// <comparison> ::= <sum> [ <relation> <sum> ]
+void comparision(){
+
+}
+
+// <relation> ::= “<” | “<=” | “==” | “!=” | “>” | “>=”
+void relation(){
+
+}
+
+// <sum> ::= <term> { (‘+’ | ‘-’) <term> }
+void sum(){
+
+}
+
+// <term> ::= <factor> { ( ‘*’ | ‘/’ ) <factor> }
+void term(){
+
+}
+
+// <factor> ::= intconst | charconst | id | ‘(‘ <expr> ‘)’
+void factor(){
+
+}
+>>>>>>> b1af8cc (preparação para o analisador sintático)
