@@ -351,7 +351,6 @@ TInfoAtomo obter_atomo(){
 TInfoAtomo verifica_igual(){
 
     TInfoAtomo info_igual;
-    memset(&info_igual, 0, sizeof(TInfoAtomo)); // reseta
     info_igual.atomo = IGUALATRIBUICAO;
 
     if(*entrada == '='){
@@ -371,7 +370,6 @@ q1:
 TInfoAtomo verifica_maior(){
 
     TInfoAtomo info_maior;
-    memset(&info_maior, 0, sizeof(TInfoAtomo)); // reseta
     info_maior.atomo = MAIOR;
 
     if(*entrada == '='){
@@ -391,7 +389,6 @@ q1:
 TInfoAtomo verifica_menor(){
 
     TInfoAtomo info_menor;
-    memset(&info_menor, 0, sizeof(TInfoAtomo)); // reseta
     info_menor.atomo = MENOR;
     
     if(*entrada == '='){
@@ -411,7 +408,6 @@ q1:
 TInfoAtomo verifica_exclamacao(){
     
     TInfoAtomo info_excl;
-    memset(&info_excl, 0, sizeof(TInfoAtomo)); // reseta
     info_excl.atomo = NOT;
     
     if(*entrada == '='){
@@ -431,7 +427,6 @@ q1:
 TInfoAtomo verifica_ecomercial(){
 
     TInfoAtomo info_ecom;
-    memset(&info_ecom, 0, sizeof(TInfoAtomo)); // reseta
     info_ecom.atomo = ERROLEXICO;
     
     if(*entrada == '&'){
@@ -446,7 +441,6 @@ TInfoAtomo verifica_ecomercial(){
 TInfoAtomo verifica_pipe(){
     
     TInfoAtomo info_pipe;
-    memset(&info_pipe, 0, sizeof(TInfoAtomo)); // reseta
     info_pipe.atomo = ERROLEXICO;
     
     if(*entrada == '|'){
@@ -578,7 +572,6 @@ q4: // final
 TInfoAtomo reconhece_char() {
 
     TInfoAtomo info_char;
-    memset(&info_char, 0, sizeof(TInfoAtomo));
     info_char.atomo = ERROLEXICO;
 
     goto q1;
@@ -602,7 +595,6 @@ q2:
 
     return info_char;
 }
-
 
 // COMENTARIO OU DIVISAOSAO
 TInfoAtomo reconhece_comentario_ou_divisao() {
@@ -746,7 +738,6 @@ void compound_stmt() {
     consome(FECHA_CHAVES);
 }
 
-
 // <var_decl> ::= [ <type_specifier> <var_decl_list> ‘;’ ]
 void var_decl(){
 
@@ -778,7 +769,6 @@ void type_specifier() {
             exit(1);
     }
 }
-
 
 // <var_decl_list> ::= <variable_id> { ',' <variable_id> }
 void var_decl_list() {
