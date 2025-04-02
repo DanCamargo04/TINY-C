@@ -148,9 +148,9 @@ int main(int num_argumentos, char **argumentos) {
         printf("\n# %d:erro sintático, esperado fim do arquivo, encontrado [%s]\n", contaLinha, strSimbolo[lookahead]);
         exit(1);
     }
-    printf("\n•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••\n");
-    printf("%d linhas analisadas, programa lexicamente sintaticamente correto\n", contaLinha);
-    printf("•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••\n\n");
+    printf("\n•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••\n");
+    printf("%d linhas analisadas, programa lexicamente e sintaticamente correto\n", contaLinha);
+    printf("•••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••\n\n");
 
     free(buffer);
 
