@@ -230,9 +230,8 @@ int main(int num_argumentos, char **argumentos) {
     printf("\n");
 
     // mostrar o primeiro comentário e a linha que ele acaba
-    while (info_atomo.atomo == COMENTARIO) {
+    if(info_atomo.atomo == COMENTARIO) {
         printf("Atomo: %-15s | Linha: %2d\n", strAtomo[info_atomo.atomo], info_atomo.linha);
-        info_atomo = obter_atomo();
     }    
 
     if (info_atomo.atomo == ERROLEXICO) {
@@ -502,7 +501,8 @@ q1:
             count++;
             entrada++;
             goto q1;
-        } else {
+        } 
+        else {
             entrada++;
         }
     }
