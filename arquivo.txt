@@ -1,13 +1,13 @@
 /*
-programa le dois numeros inteiros e encontra o maior
+Programa correto que lê dois inteiros e imprime o maior
 */
 void main ( void ) {
     int num_1, num_2, maior;
-        readint(num_1);
-        readint(num_2);
+    readint(num_1);
+    readint(num_2);
     if ( num_1 > num_2 )
         maior = num_1;
     else
         maior = num_2;
-    writeint(maior); // imprime o maior valor
+    writeint(maior);
 }

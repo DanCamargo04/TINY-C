@@ -19,9 +19,12 @@ sudo apt upgrade
 #include <string.h> // strncpy
 #include <stdlib.h> // atof
 
+// Declaracao de variaveis globais
+
 // definicoes dos atomos
 typedef enum{
     ERROLEXICO,
+    ERROLEXICOEXCEDECARACTERES,
     ERROSINTATICO,
     ENDOFFILE,
     COMENTARIO,
@@ -66,14 +69,13 @@ typedef struct{
     char atributo[15];
 }TInfoAtomo;
 
-// Declaracao de variaveis globais
-
 char *entrada = NULL;
 TAtomo lookahead;
 int contaLinha = 1;
 
 char *strAtomo[] = {
     "ERROLEXICO",
+    "ERROLEXICOEXCEDECARACTERES",
     "ERROSINTATICO",
     "ENDOFFILE",
     "COMENTARIO",
@@ -113,6 +115,7 @@ char *strAtomo[] = {
 
 char *strSimbolo[] = {
     "ERROLEXICO",
+    "ERROLEXICOEXCEDECARACTERES",
     "ERROSINTATICO",
     "ENDOFFILE",
     "COMENTARIO",
@@ -150,7 +153,7 @@ char *strSimbolo[] = {
     "||" 
 };
 
-// Declaracao das funcoes
+// Declaracao das funcoes do léxico
 
 TInfoAtomo verifica_igual(); // = ou ==
 TInfoAtomo verifica_maior(); // > ou >=
@@ -165,6 +168,8 @@ TInfoAtomo reconhece_id();
 TInfoAtomo reconhece_int();
 TInfoAtomo reconhece_char();
 TInfoAtomo reconhece_comentario_ou_divisao();
+
+// Declaração das funções do sintático
 
 void program();
 void compound_stmt();
@@ -184,13 +189,51 @@ void sum();
 void term();
 void factor();
 
-int main() {
+int main(int num_argumentos, char **argumentos) {
 
-    entrada = "/*teste*/void main (void) {int num_1, num_2, maior; readint(num_1); readint(num_2); if ( a && b) maior = num_1; else maior = num_2; num_1  = 0xA; p = 'c'; writeint(maior); // imprime o maior valor\n}";
+    // verifica se o nome do arquivo foi passado como argumento
+    if (num_argumentos < 2) {
+        printf("Uso: %s <arquivo>\n", argumentos[0]);
+        return 1;
+    }
+
+    FILE *arquivo = fopen(argumentos[1], "r");
+    if (arquivo == NULL) {
+        printf("Erro ao abrir o arquivo %s!\n", argumentos[1]);
+        return 1;
+    }
+
+    // determina o tamanho do arquivo
+    fseek(arquivo, 0, SEEK_END);
+    long tamanho = ftell(arquivo);
+    fseek(arquivo, 0, SEEK_SET);
+    
+    // aloca memória para o conteúdo do arquivo
+    char *buffer = (char *)malloc(tamanho + 1);
+    if (buffer == NULL) {
+        printf("Erro de alocação de memória!\n");
+        fclose(arquivo);
+        return 1;
+    }
+    
+    // lê o conteúdo do arquivo
+    size_t lidos = fread(buffer, 1, tamanho, arquivo);
+    buffer[lidos] = '\0'; // adiciona o terminador nulo
+    fclose(arquivo);
+
+    entrada = buffer;
+
+    //entrada = "/*teste*/void main (void) {int num_1, num_2, maior; readint(num_1); readint(num_2); if (a && b) maior = num_1; else maior = num_2; num_1  = 0xA; p = 'c'; writeint(maior); // imprime o maior valor\n}";
 
     TInfoAtomo info_atomo = obter_atomo(); // primeira leitura
 
     printf("\n");
+
+    // mostrar o primeiro comentário e a linha que ele acaba
+    while (info_atomo.atomo == COMENTARIO) {
+        printf("Atomo: %-15s | Linha: %2d\n", strAtomo[info_atomo.atomo], info_atomo.linha);
+        info_atomo = obter_atomo();
+    }    
 
     if (info_atomo.atomo == ERROLEXICO) {
         printf("\nErro léxico na linha %d\n\n", info_atomo.linha);
@@ -208,29 +251,7 @@ int main() {
 
     printf("\nAnálise léxica e sintática das %d linhas concluídas! Programa compilado com sucesso!\n\n", contaLinha);
 
-    /*
-    while (lookahead != ENDOFFILE) {
-        printf("Atomo: %-15s | Linha: %4d", strAtomo[info_atomo.atomo], info_atomo.linha);
-
-        if(lookahead == ID){
-            printf("  | ID: %4s", info_atomo.identificador);
-        }
-
-        printf("\n");
-    
-        info_atomo = obter_atomo();
-        
-        if (info_atomo.atomo == ERROLEXICO) {
-            printf("\nErro léxico na linha %d\n\n", info_atomo.linha);
-            exit(1);
-        }
-    
-        lookahead = info_atomo.atomo;  // atualiza o lookahead
-    }
-
-    printf("Atomo: %-15s | Linha: %4d\n\n", strAtomo[info_atomo.atomo], contaLinha);
-
-    */
+    free(buffer);
 
     return 0;
 }
@@ -348,6 +369,7 @@ TInfoAtomo obter_atomo(){
     return info_atomo;
 }
 
+// = ou ==
 TInfoAtomo verifica_igual(){
 
     TInfoAtomo info_igual;
@@ -367,6 +389,7 @@ q1:
 
 }
 
+// > ou >=
 TInfoAtomo verifica_maior(){
 
     TInfoAtomo info_maior;
@@ -386,6 +409,7 @@ q1:
 
 }
 
+// < ou <=
 TInfoAtomo verifica_menor(){
 
     TInfoAtomo info_menor;
@@ -405,6 +429,7 @@ q1:
     
 }
 
+// ! ou !=
 TInfoAtomo verifica_exclamacao(){
     
     TInfoAtomo info_excl;
@@ -424,6 +449,7 @@ q1:
     
 }
 
+// &&
 TInfoAtomo verifica_ecomercial(){
 
     TInfoAtomo info_ecom;
@@ -438,6 +464,7 @@ TInfoAtomo verifica_ecomercial(){
 
 }
 
+// ||
 TInfoAtomo verifica_pipe(){
     
     TInfoAtomo info_pipe;
@@ -452,7 +479,7 @@ TInfoAtomo verifica_pipe(){
 
 }
 
-// IDENTIFICADOR -> (LETRA_MINUSCULA | LETRA_MAIUSCULA | _)+(LETRA_MINUSCULA | LETRA_MAIUSCULA | _ | DIGITO)* ||| Inserir o atributo
+// IDENTIFICADOR -> (LETRA_MINUSCULA | LETRA_MAIUSCULA | _)+(LETRA_MINUSCULA | LETRA_MAIUSCULA | _ | DIGITO)* --- Inserir o atributo
 // PALAVRAS RESERVADAS: char, else, if, int, main, readint, void, while, writeint
 TInfoAtomo reconhece_id() {
 
@@ -477,15 +504,18 @@ q1:
             goto q1;
         } else {
             entrada++;
-            goto q1;
         }
     }
 
-    strncpy(info_id.identificador, ini_id, entrada - ini_id);
-    info_id.identificador[entrada - ini_id] = '\0';
+    int tamanho = entrada - ini_id;
+    if (tamanho > 14) { // excedeu o número de caracteres permitidos
+        info_id.atomo = ERROLEXICOEXCEDECARACTERES;
+        return info_id;
+    }
+    strncpy(info_id.identificador, ini_id, tamanho);
+    info_id.identificador[tamanho] = '\0';
 
-    // Verifica se é palavra reservada
-
+    // verifica se é palavra reservada
     if (strcmp(info_id.identificador, "int") == 0)
         info_id.atomo = INT;
     else if (strcmp(info_id.identificador, "char") == 0)
@@ -557,7 +587,7 @@ q3:
     buffer[idx] = '\0'; // finaliza a string com '\0'
     goto q4;
 
-q4: // final
+q4:
 
     if (isspace(*entrada) || *entrada == '\0' || *entrada == ';' || *entrada == ')' || *entrada == ',') {
         long valor = strtol(buffer, NULL, 16); // converte hexadecimal para inteiro
@@ -577,7 +607,7 @@ TInfoAtomo reconhece_char() {
     goto q1;
 
 q1:
-    if (*entrada == '\0') return info_char; // erro: fim de entrada
+    if (*entrada == '\0') return info_char; // erro
 
     // salva o caractere como atributo
     info_char.atributo[0] = *entrada;
@@ -658,13 +688,18 @@ q3:
 
 // SINTÁTICO ---------------------------------------------------------------------------------------------------
 
+// consome e printa as informações
 void consome(TAtomo atomo) {
 
     if (lookahead == atomo) {
 
         TInfoAtomo info_atomo = obter_atomo();   
 
-        if (info_atomo.atomo == ERROLEXICO) {
+        if(info_atomo.atomo == ERROLEXICOEXCEDECARACTERES){
+            printf("\nErro léxico de excesso de caracteres na declaração de identificador na linha %d\n\n", info_atomo.linha);
+            exit(1);
+        }
+        else if(info_atomo.atomo == ERROLEXICO) {
             printf("\nErro léxico na linha %d\n\n", info_atomo.linha);
             exit(1);
         }
@@ -723,16 +758,10 @@ void compound_stmt() {
 
     while (lookahead == COMENTARIO) consome(COMENTARIO); 
 
-    while (lookahead != FECHA_CHAVES && lookahead != ENDOFFILE) {
-        while (lookahead == COMENTARIO) consome(COMENTARIO);
-        if (lookahead == ID || lookahead == IF || lookahead == WHILE ||
-            lookahead == READINT || lookahead == WRITEINT || lookahead == ABRE_CHAVES) {
-            stmt();
-        } 
-        else {
-            break; 
-        }
-    }
+    while (lookahead == ID || lookahead == IF || lookahead == WHILE ||
+        lookahead == READINT || lookahead == WRITEINT || lookahead == ABRE_CHAVES) {
+        stmt();
+    } 
 
     consome_comentarios();
     consome(FECHA_CHAVES);
@@ -975,7 +1004,8 @@ void sum() {
     while (lookahead == ADICAO || lookahead == SUBITRACAO) {
         if (lookahead == ADICAO) {
             consome(ADICAO);
-        } else {
+        } 
+        else {
             consome(SUBITRACAO);
         }
         term();
@@ -991,7 +1021,8 @@ void term() {
     while (lookahead == MULTIPLICACAO || lookahead == DIVISAO) {
         if (lookahead == MULTIPLICACAO) {
             consome(MULTIPLICACAO);
-        } else {
+        } 
+        else {
             consome(DIVISAO);
         }
         factor();
