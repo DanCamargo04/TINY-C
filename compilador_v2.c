@@ -1,6 +1,6 @@
 /*
 Para compilar no vscode use:
-gcc compilador.c -Wall -Og -g -o compilador
+gcc compilador_v2.c -Wall -Og -g -o compilador_v2
 
 // teste de memoria
 https://diveintosystems.org/book/C3-C_debug/valgrind.html
